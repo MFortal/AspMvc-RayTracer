@@ -26,33 +26,29 @@ namespace RayTracingMVC.Controllers
             var height = request.Height;
 
             var spheres = request.Spheres;
-            //var checkerBoard = request.CheckerBoard;
-
-            //var objects = new List<Sphere>();
-            //foreach (var sphere in spheres)
-            //{
-            //    objects.Add(sphere);
-            //}
 
             var pathBack = request.PathBack;
             var client = new WebClient();
             var stream = client.OpenRead(pathBack);
             var background = new Bitmap(stream ?? throw new InvalidOperationException());
-
             var ligths = request.Lights;
-
             var kolCadr = request.KolCadr;
             var disVec = request.DisVec;
+
+            var centerOkr = request.CenterOkr;
+
+            var ang = 0f;
+            var raduisOkr = request.RaduisOkr;
 
             var byteArrays = new List<byte[]>();
 
             for (var i = 0; i < kolCadr; i++)
             {
+                spheres[0].Center.x = (float)Math.Cos(ang) * raduisOkr + centerOkr.x;
+                spheres[0].Center.z = (float)Math.Sin(ang) * raduisOkr + centerOkr.z;
+
                 byteArrays.Add(RayTraceHelper.GetImageByteArray(width, height, spheres, background, ligths));
-                foreach (var sphere in spheres)
-                {
-                    sphere.Center += disVec;
-                }
+                ang += 0.1f;
             }
 
             var gEnc = new GifBitmapEncoder();
@@ -76,6 +72,12 @@ namespace RayTracingMVC.Controllers
                     BitmapSizeOptions.FromEmptyOptions());
                 gEnc.Frames.Add(BitmapFrame.Create(src));
             }
+
+            //var path = @"C:/1/gif1.gif";
+            //using (FileStream fs = new FileStream(path, FileMode.Create))
+            //{
+            //    gEnc.Save(fs);
+            //}
 
             using (MemoryStream ms = new MemoryStream())
             {
