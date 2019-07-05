@@ -8,13 +8,12 @@ namespace RayTracingMVC.Models
 {
     public class RenderImageRequest
     {
-        public int Width;
-        public int Height;
+        public int Width { get; set; }
+        public int Height { get; set; }
         public Geometry.Geometry.Vec3f Origin { get; set; }
         public List<Sphere> Spheres { get; set; }
         public List<CheckerBoard> CheckerBoard { get; set; }
-        //public Geometry.Geometry.Vec3f Background { get; set; }
         public string PathBack { get; set; }
         public List<Light> Lights { get; set; }
-    }
+    };
 }

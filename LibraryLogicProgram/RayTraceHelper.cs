@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Net;
+using System.Runtime.InteropServices;
 using Geometry;
 using static Geometry.Geometry;
 
@@ -11,17 +12,29 @@ namespace RayTracingLib
 {
     public class RayTraceHelper
     {
-        //public Bitmap RayTraceHelper(RayTracerRequest  request)
-        //{
-
-        //};
-
-        public static Bitmap Render(int width, int height, List<IObjectBase> objects, Bitmap background, List<Light> lights)
+        public static Bitmap Render(int width, int height, List<Sphere> objects, Bitmap background, List<Light> lights)
         {
             return CalculateBitmap(width, height, objects, background, lights);
         }
 
-        private static Bitmap CalculateBitmap(int width, int height, List<IObjectBase> objects, Bitmap background, List<Light> lights)
+        public static byte[] GetImageByteArray(int width, int height, List<Sphere> objects, Bitmap background, List<Light> lights)
+        {
+            return CalculateBitmapArray(width, height, objects, background, lights);
+        }
+
+        private static Bitmap CalculateBitmap(int width, int height, List<Sphere> objects, Bitmap background, List<Light> lights)
+        {
+            var frameBuffer = CalculateColorArray(width, height, objects, background, lights);
+            return CreateImage(width, height, frameBuffer);
+        }
+
+        private static byte[] CalculateBitmapArray(int width, int height, List<Sphere> objects, Bitmap background, List<Light> lights)
+        {
+            var frameBuffer = CalculateColorArray(width, height, objects, background, lights);
+            return CreateBitmapByteArray(width, height, frameBuffer);
+        }
+
+        private static Color[] CalculateColorArray(int width, int height, List<Sphere> objects, Bitmap background, List<Light> lights)
         {
             var fov = (float)(Math.PI / 3f);
 
@@ -46,9 +59,9 @@ namespace RayTracingLib
                     framebuffer[i + j * width] = CastRay(vcam, vdir, objects, backgroundPixel, lights);
                 }
             }
-            return CreateImage(width, height, framebuffer);
-        }
 
+            return framebuffer;
+        }
 
         /// <summary>
         /// Определение цвета пикселя
@@ -60,15 +73,15 @@ namespace RayTracingLib
         /// <param name="lights"></param>
         /// <param name="depth">Глубина рекурсии</param>
         /// <returns></returns>
-        private static Color CastRay(Vec3f orig, Vec3f dir, List<IObjectBase> objects, Color background, List<Light> lights, int depth = 0)
+        private static Color CastRay(Vec3f orig, Vec3f dir, List<Sphere> objects, Color background, List<Light> lights, int depth = 0)
         {
             foreach (var _object in objects)
             {
                 var n = new Vec3f();
                 var point = new Vec3f();
                 var material = new Material();
-                var result = new Vec3f();
-                var boolVar = false;
+                Vec3f result;
+
 
                 if (depth < 4 && _object.IsRayIntersect(orig, dir, ref point, ref n, ref material))
                 {
@@ -94,15 +107,15 @@ namespace RayTracingLib
 
                         var lightDistance = (light.position - point).Norm();
 
-                        var shadow_orig = lightDir * n < 0 ? point - n * 1e-3f : point + n * 1e-3f;
+                        var shadowOrig = lightDir * n < 0 ? point - n * 1e-3f : point + n * 1e-3f;
 
-                        var shadow_pt = new Vec3f();
+                        var shadowPt = new Vec3f();
 
-                        var shadow_N = new Vec3f();
+                        var shadowN = new Vec3f();
 
                         var tmpmaterial = new Material();
 
-                        if (_object.IsRayIntersect(shadow_orig, lightDir, ref shadow_pt, ref shadow_N, ref tmpmaterial) && (shadow_pt - shadow_orig).Norm() < lightDistance)
+                        if (_object.IsRayIntersect(shadowOrig, lightDir, ref shadowPt, ref shadowN, ref tmpmaterial) && (shadowPt - shadowOrig).Norm() < lightDistance)
                             continue;
 
                         diffuseLightIntensity += light.intensity * Math.Max(0f, lightDir * n);
@@ -121,11 +134,11 @@ namespace RayTracingLib
         /// Вектор отражения
         /// </summary>
         /// <param name="I"></param>
-        /// <param name="N"></param>
+        /// <param name="n"></param>
         /// <returns></returns>
-        private static Vec3f Reflect(Vec3f I, Vec3f N)
+        private static Vec3f Reflect(Vec3f I, Vec3f n)
         {
-            return I - N * 2f * (I * N);
+            return I - n * 2f * (I * n);
         }
 
         /// <summary>
@@ -169,13 +182,31 @@ namespace RayTracingLib
                 data[l++] = imageData[i].R;
                 data[l++] = 255;
             }
+
             unsafe
             {
                 fixed (byte* ptr = data)
                 {
                     return new Bitmap(width, height, width * 4, PixelFormat.Format32bppArgb, new IntPtr(ptr));
+
                 }
             }
+        }
+
+        private static byte[] CreateBitmapByteArray(int width, int height, Color[] imageData)
+        {
+            byte[] data = new byte[width * height * 4];
+            int l = 0;
+
+            for (int i = 0; i < imageData.Length; i++)
+            {
+
+                data[l++] = imageData[i].B;
+                data[l++] = imageData[i].G;
+                data[l++] = imageData[i].R;
+                data[l++] = 255;
+            }
+            return data;
         }
     }
 }
